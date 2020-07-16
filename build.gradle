@@ -1,0 +1,64 @@
+plugins {
+    id 'com.github.johnrengelman.shadow' version '5.2.0' apply false
+    id 'maven-publish'
+    id 'signing'
+    id 'org.openjfx.javafxplugin' version '0.0.8' apply false
+}
+group = 'pro.gravit.launcher'
+version = '5.1.7'
+
+apply from: 'props.gradle'
+
+configure(subprojects.findAll { it.name != 'modules' }) {
+    apply plugin: 'idea'
+    apply plugin: 'eclipse'
+    apply plugin: 'java'
+    apply plugin: 'java-library'
+
+
+    group = 'pro.gravit'
+
+    repositories {
+        mavenCentral()
+        maven { url 'https://oss.sonatype.org/content/groups/public' }
+        maven {
+            url "https://clojars.org/repo/"
+        }
+    }
+
+    jar {
+        duplicatesStrategy = 'EXCLUDE'
+    }
+
+    eclipse {
+        classpath {
+            downloadSources = true
+            downloadJavadoc = true
+        }
+    }
+
+    tasks.withType(JavaCompile) {
+        options.encoding = "UTF-8"
+        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+        options.incremental = true // one flag, and things will get MUCH faster    
+    }
+}
+
+wrapper {
+    distributionType = Wrapper.DistributionType.ALL
+}
+
+defaultTasks 'build'
+if (hasProperty('mavenUsername') && hasProperty('mavenPassword') && hasProperty('mavenReleaseRepository') && hasProperty('mavenSnapshotRepository')) {
+    publishing {
+        repositories {
+            maven {
+                url = version.endsWith('SNAPSHOT') ? getProperty('mavenSnapshotRepository') : getProperty('mavenReleaseRepository')
+                credentials {
+                    username getProperty('mavenUsername')
+                    password getProperty('mavenPassword')
+                }
+            }
+        }
+    }
+}

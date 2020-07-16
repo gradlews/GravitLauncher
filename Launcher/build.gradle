@@ -1,0 +1,109 @@
+apply plugin: 'org.openjfx.javafxplugin'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+String mainClassName = "pro.gravit.launcher.ClientLauncherWrapper"
+String mainAgentName = "pro.gravit.launcher.LauncherAgent"
+
+repositories {
+    maven {
+        url "https://repo.spring.io/plugins-release/"
+    }
+}
+javafx {
+    version = "12"
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
+configurations {
+    bundle
+    pack
+    api.extendsFrom bundle, pack
+}
+
+jar {
+    classifier = 'clean'
+    manifest.attributes("Main-Class": mainClassName,
+            "Premain-Class": mainAgentName,
+            "Can-Redefine-Classes": "true",
+            "Can-Retransform-Classes": "true",
+            "Can-Set-Native-Method-Prefix": "true",
+            "Multi-Release-Jar": "true")
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    archiveClassifier = 'sources'
+}
+
+task javadocJar(type: Jar) {
+    from javadoc
+    archiveClassifier = 'javadoc'
+}
+
+shadowJar {
+    duplicatesStrategy = 'EXCLUDE'
+    classifier = null
+    relocate 'org.objectweb.asm', 'pro.gravit.repackage.org.objectweb.asm'
+    relocate 'io.netty', 'pro.gravit.repackage.io.netty'
+    configurations = [project.configurations.pack]
+    exclude 'module-info.class'
+}
+
+dependencies {
+    pack project(':LauncherAPI')
+    bundle group: 'com.github.oshi', name: 'oshi-core', version: rootProject['verOshiCore']
+    pack group: 'io.netty', name: 'netty-codec-http', version: rootProject['verNetty']
+    pack group: 'org.ow2.asm', name: 'asm-tree', version: rootProject['verAsm']
+}
+
+task genRuntimeJS(type: Zip) {
+    duplicatesStrategy = 'EXCLUDE'
+    archiveFileName = "runtime.zip"
+    destinationDirectory = file("${buildDir}/tmp")
+    from "runtime/"
+}
+
+task dumpLibs(type: Copy) {
+    duplicatesStrategy = 'EXCLUDE'
+    into "$buildDir/libs/libraries"
+    from configurations.bundle
+}
+
+
+assemble.dependsOn tasks.genRuntimeJS, tasks.dumpLibs, tasks.shadowJar
+
+publishing {
+    publications {
+        launcherclientapi(MavenPublication) {
+            artifactId = 'launcher-client-api'
+            artifact(jar) {
+                classifier ""
+            }
+            artifact sourcesJar
+            artifact javadocJar
+            pom {
+                name = 'GravitLauncher Client API'
+                description = 'GravitLauncher Client Module API'
+                url = 'https://launcher.gravit.pro'
+                licenses {
+                    license {
+                        name = 'GNU General Public License, Version 3.0'
+                        url = 'https://www.gnu.org/licenses/gpl-3.0.html'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/GravitLauncher/Launcher.git'
+                    developerConnection = 'scm:git:ssh://git@github.com:GravitLauncher/Launcher.git'
+                    url = 'https://launcher.gravit.pro/'
+                }
+            }
+        }
+    }
+}
+
+
+signing {
+    sign publishing.publications.launcherclientapi
+}

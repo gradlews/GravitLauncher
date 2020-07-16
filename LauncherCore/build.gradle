@@ -1,0 +1,82 @@
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
+dependencies {
+    compileOnly group: 'org.fusesource.jansi', name: 'jansi', version: rootProject['verJansi']
+    compileOnly group: 'org.jline', name: 'jline', version: rootProject['verJline']
+    compileOnly group: 'org.jline', name: 'jline-reader', version: rootProject['verJline']
+    compileOnly group: 'org.jline', name: 'jline-terminal', version: rootProject['verJline']
+    compileOnly group: 'org.bouncycastle', name: 'bcprov-jdk15', version: rootProject['verBcprov']
+    api group: 'com.google.code.gson', name: 'gson', version: rootProject['verGson']
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: rootProject['verJunit']
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+sourceSets {
+    java9 {
+        java {
+            srcDirs = ['src/main/java9']
+        }
+        dependencies {
+            java9Implementation files(sourceSets.main.output.classesDirs) { builtBy compileJava }
+        }
+    }
+}
+jar {
+    into('META-INF/versions/9') {
+        from sourceSets.java9.output
+    }
+    classifier = 'clean'
+}
+compileJava9Java {
+    sourceCompatibility = 9
+    targetCompatibility = 9
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    archiveClassifier = 'sources'
+}
+
+task javadocJar(type: Jar) {
+    from javadoc
+    archiveClassifier = 'javadoc'
+}
+
+publishing {
+    publications {
+        launchercore(MavenPublication) {
+            artifactId = 'launcher-core'
+            artifact(jar) {
+                classifier ""
+            }
+            artifact sourcesJar
+            artifact javadocJar
+            pom {
+                name = 'GravitLauncher Core Utils'
+                description = 'GravitLauncher Core Utils'
+                url = 'https://launcher.gravit.pro'
+                licenses {
+                    license {
+                        name = 'GNU General Public License, Version 3.0'
+                        url = 'https://www.gnu.org/licenses/gpl-3.0.html'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/GravitLauncher/Launcher.git'
+                    developerConnection = 'scm:git:ssh://git@github.com:GravitLauncher/Launcher.git'
+                    url = 'https://launcher.gravit.pro/'
+                }
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.launchercore
+}
